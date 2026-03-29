@@ -4,11 +4,24 @@
 <h1>我的录音</h1>
 
 <div class="card">
-    <h2>上传新录音</h2>
+    <h2>导入转写文本（半自动模式）</h2>
+    <p class="text-muted mb-4">用录音卡转写后，把文字粘贴到这里。格式：每行一句，用"销售:"和"客户:"标注说话人。</p>
+    <form method="post" action="/upload-transcript">
+        <input type="text" name="title" placeholder="标题（如：张先生看房跟进电话）" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; font-size: 14px; margin-bottom: 12px;">
+        <textarea name="transcript_text" rows="10" placeholder="销售: 张先生您好，上次带您看的那套三居室考虑得怎么样了？&#10;客户: 我觉得价格还是有点高...&#10;销售: 理解您的顾虑，其实这个价格在这个地段已经是..." style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; font-size: 14px; font-family: inherit; resize: vertical;" required></textarea>
+        <div class="mt-4">
+            <button type="submit" class="btn">分析转写文本</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>上传录音文件（全自动模式）</h2>
+    <p class="text-muted mb-4">需要配置ASR服务后才能使用。</p>
     <form method="post" action="/upload" enctype="multipart/form-data">
         <input type="file" name="file" accept="audio/*" required>
         <div class="mt-4">
-            <button type="submit" class="btn">上传并分析</button>
+            <button type="submit" class="btn btn-outline">上传并分析</button>
         </div>
         <p class="text-muted mt-2">支持 MP3, WAV, M4A, OGG, FLAC, AAC, WMA 格式，最大 200MB</p>
     </form>

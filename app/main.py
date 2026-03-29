@@ -25,7 +25,7 @@ from app.config import (
     PLAYBOOK_MIN_RECORDINGS,
 )
 from app.models import RecordingStatus, RETRYABLE_STATUSES
-from app.tasks import process_recording, check_stale_recordings
+from app.tasks import process_recording, process_transcript, check_stale_recordings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -135,6 +135,83 @@ async def upload_recording(request: Request, file: UploadFile = File(...)):
     return RedirectResponse(
         url=f"/recording/{recording['id']}", status_code=302
     )
+
+
+@app.post("/upload-transcript")
+async def upload_transcript(
+    request: Request,
+    title: str = Form(...),
+    transcript_text: str = Form(...),
+):
+    """Semi-auto mode: paste transcript text from recording card, skip ASR entirely."""
+    require_auth(request)
+
+    if not transcript_text.strip():
+        raise HTTPException(status_code=400, detail="转写文本不能为空")
+
+    # Create recording record (no audio file needed)
+    recording = db.create_recording(
+        filename=title or "手动导入的转写稿",
+        storage_path="manual",
+    )
+
+    # Parse transcript into segments (simple line-based format)
+    segments = _parse_manual_transcript(transcript_text)
+
+    # Save transcript and go straight to analysis (skip ASR)
+    db.update_recording(recording["id"], transcript=segments, asr_confidence=100.0)
+    asyncio.create_task(process_transcript(recording["id"], segments))
+
+    return RedirectResponse(
+        url=f"/recording/{recording['id']}", status_code=302
+    )
+
+
+def _parse_manual_transcript(text: str) -> list[dict]:
+    """
+    Parse manually pasted transcript into segments.
+
+    Supports formats:
+    - "销售: xxx" / "客户: xxx" (labeled)
+    - "A: xxx" / "B: xxx" (labeled)
+    - Plain text (all attributed to boss)
+    """
+    lines = text.strip().split("\n")
+    segments = []
+    boss_labels = {"销售", "老板", "我", "a", "A", "销冠", "经纪人", "业务员"}
+    client_labels = {"客户", "顾客", "买家", "b", "B", "客"}
+
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            continue
+
+        speaker = "boss"
+        text_content = line
+
+        # Try to detect "label: content" format
+        if ":" in line or "：" in line:
+            sep = "：" if "：" in line else ":"
+            parts = line.split(sep, 1)
+            label = parts[0].strip()
+            if label in boss_labels:
+                speaker = "boss"
+                text_content = parts[1].strip()
+            elif label in client_labels:
+                speaker = "client"
+                text_content = parts[1].strip()
+
+        if text_content:
+            segments.append(
+                {
+                    "speaker": speaker,
+                    "text": text_content,
+                    "start": float(i),
+                    "end": float(i + 1),
+                }
+            )
+
+    return segments
 
 
 @app.get("/recording/{recording_id}", response_class=HTMLResponse)

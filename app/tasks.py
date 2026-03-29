@@ -29,6 +29,45 @@ from app.services.analysis import (
 logger = logging.getLogger(__name__)
 
 
+async def process_transcript(recording_id: str, segments: list[dict]):
+    """
+    Semi-auto mode: transcript already provided, only run Claude analysis.
+    Skips ASR entirely.
+    """
+    try:
+        db.update_recording(recording_id, status=RecordingStatus.ANALYZING.value)
+
+        try:
+            analysis = await analyze_call(segments)
+        except AnalysisError as e:
+            db.update_recording(
+                recording_id,
+                status=RecordingStatus.FAILED.value,
+                error_message=str(e),
+            )
+            logger.error(f"Recording {recording_id}: analysis failed: {e}")
+            return
+
+        db.update_recording(
+            recording_id,
+            status=RecordingStatus.DONE.value,
+            analysis=analysis,
+        )
+        logger.info(f"Recording {recording_id}: transcript analysis complete")
+
+        completed = db.get_completed_recordings()
+        if len(completed) >= PLAYBOOK_MIN_RECORDINGS:
+            await _update_playbook(analysis, recording_id)
+
+    except Exception as e:
+        logger.exception(f"Recording {recording_id}: unexpected error")
+        db.update_recording(
+            recording_id,
+            status=RecordingStatus.FAILED.value,
+            error_message=f"Unexpected error: {e}",
+        )
+
+
 async def process_recording(recording_id: str, audio_url: str):
     """
     Full processing pipeline for a single recording.
