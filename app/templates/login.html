@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block nav %}{% endblock %}
+{% block content %}
+<div style="max-width: 400px; margin: 100px auto;">
+    <div class="card">
+        <h2>销冠克隆器</h2>
+        <p class="text-muted mb-4">输入密码登录</p>
+        {% if error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+        <form method="post" action="/login">
+            <input type="password" name="password" placeholder="请输入密码" autofocus>
+            <div class="mt-4">
+                <button type="submit" class="btn" style="width: 100%;">登录</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

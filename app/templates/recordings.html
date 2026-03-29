@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}录音列表 - 销冠克隆器{% endblock %}
+{% block content %}
+<h1>我的录音</h1>
+
+<div class="card">
+    <h2>上传新录音</h2>
+    <form method="post" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="file" accept="audio/*" required>
+        <div class="mt-4">
+            <button type="submit" class="btn">上传并分析</button>
+        </div>
+        <p class="text-muted mt-2">支持 MP3, WAV, M4A, OGG, FLAC, AAC, WMA 格式，最大 200MB</p>
+    </form>
+</div>
+
+{% if recordings %}
+    {% for rec in recordings %}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ rec.filename }}</strong>
+                <span class="status status-{{ rec.status }}">
+                    {% if rec.status == 'uploaded' %}已上传
+                    {% elif rec.status == 'transcribing' %}转写中...
+                    {% elif rec.status == 'analyzing' %}分析中...
+                    {% elif rec.status == 'done' %}完成
+                    {% elif rec.status == 'failed' %}失败
+                    {% endif %}
+                </span>
+            </div>
+            <div>
+                <a href="/recording/{{ rec.id }}" class="btn btn-outline">查看</a>
+            </div>
+        </div>
+        {% if rec.error_message %}
+        <p class="error mt-2">{{ rec.error_message }}</p>
+        {% endif %}
+        <p class="text-muted mt-2">{{ rec.created_at[:16] }}</p>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card empty-state">
+        <p>还没有录音。上传你的第一条销售通话录音开始分析。</p>
+    </div>
+{% endif %}
+{% endblock %}

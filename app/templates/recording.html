@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{{ recording.filename }} - 销冠克隆器{% endblock %}
+{% block head %}
+{% if recording.status in ['uploaded', 'transcribing', 'analyzing'] %}
+<script>
+    setInterval(async () => {
+        const res = await fetch('/api/recording/{{ recording.id }}/status');
+        const data = await res.json();
+        if (data.status === 'done' || data.status === 'failed') {
+            window.location.reload();
+        }
+    }, 3000);
+</script>
+{% endif %}
+{% endblock %}
+{% block content %}
+<p class="mb-4"><a href="/recordings" style="color: #1a1a2e;">&larr; 返回录音列表</a></p>
+
+<div class="card">
+    <h1>{{ recording.filename }}</h1>
+    <span class="status status-{{ recording.status }}">
+        {% if recording.status == 'uploaded' %}已上传
+        {% elif recording.status == 'transcribing' %}转写中...
+        {% elif recording.status == 'analyzing' %}分析中...
+        {% elif recording.status == 'done' %}分析完成
+        {% elif recording.status == 'failed' %}处理失败
+        {% endif %}
+    </span>
+    {% if recording.asr_confidence %}
+    <span class="text-muted" style="margin-left: 12px;">转写置信度: {{ "%.1f"|format(recording.asr_confidence) }}%</span>
+    {% endif %}
+</div>
+
+{% if recording.status == 'failed' %}
+<div class="card">
+    <p class="error">{{ recording.error_message or '处理过程中出现错误' }}</p>
+    <form method="post" action="/recording/{{ recording.id }}/retry" class="mt-4">
+        <button type="submit" class="btn">重新处理</button>
+    </form>
+</div>
+{% endif %}
+
+{% if recording.status in ['transcribing', 'analyzing'] %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <p style="font-size: 18px;">
+        {% if recording.status == 'transcribing' %}正在转写录音...{% else %}正在分析内容...{% endif %}
+    </p>
+    <p class="text-muted mt-2">页面会自动刷新，你可以先去做别的事情。</p>
+</div>
+{% endif %}
+
+{% if recording.status == 'done' and recording.analysis %}
+{% set analysis = recording.analysis %}
+
+<!-- Summary -->
+<div class="card">
+    <h2>总结</h2>
+    <p>{{ analysis.summary }}</p>
+</div>
+
+<!-- Call Phases -->
+{% if analysis.call_phases %}
+<div class="card">
+    <h2>通话阶段</h2>
+    {% for phase in analysis.call_phases %}
+    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+        <strong>{{ phase.phase_name }}</strong>
+        <p class="mt-2">{{ phase.description }}</p>
+        {% if phase.techniques_used %}
+        <p class="text-muted mt-2">技巧: {{ phase.techniques_used }}</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Objections Handled -->
+{% if analysis.objections_handled %}
+<div class="card">
+    <h2>异议处理</h2>
+    {% for obj in analysis.objections_handled %}
+    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+        <strong>客户异议:</strong> {{ obj.objection }}
+        <p class="mt-2"><strong>应对策略:</strong> {{ obj.response_strategy }}</p>
+        {% if obj.exact_quote %}
+        <p class="mt-2" style="font-style: italic; color: #555;">"{{ obj.exact_quote }}"</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Closing Techniques -->
+{% if analysis.closing_techniques %}
+<div class="card">
+    <h2>成交技巧</h2>
+    {% for tech in analysis.closing_techniques %}
+    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+        <strong>{{ tech.technique_name }}</strong>
+        <p class="mt-2">{{ tech.description }}</p>
+        {% if tech.exact_quote %}
+        <p class="mt-2" style="font-style: italic; color: #555;">"{{ tech.exact_quote }}"</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Patterns -->
+{% if analysis.patterns %}
+<div class="card">
+    <h2>销售模式</h2>
+    {% for pattern in analysis.patterns %}
+    <div style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
+        <strong>{{ pattern.pattern_name }}</strong>
+        <span class="text-muted">[{{ pattern.category }}]</span>
+        <p class="mt-2">{{ pattern.description }}</p>
+        {% if pattern.example_quotes %}
+        {% for quote in pattern.example_quotes %}
+        <p class="mt-2" style="font-style: italic; color: #555;">"{{ quote }}"</p>
+        {% endfor %}
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Key Quotes -->
+{% if analysis.key_quotes %}
+<div class="card">
+    <h2>精彩话术</h2>
+    {% for kq in analysis.key_quotes %}
+    <div style="margin-bottom: 16px; padding: 12px; background: #fff8e1; border-radius: 6px; border-left: 4px solid #ff9800;">
+        <p style="font-size: 16px; font-style: italic;">"{{ kq.quote }}"</p>
+        <p class="text-muted mt-2">{{ kq.context }}</p>
+        <p class="mt-2"><strong>为什么有效:</strong> {{ kq.why_effective }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

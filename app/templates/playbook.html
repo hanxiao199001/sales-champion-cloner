@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}我的Playbook - 销冠克隆器{% endblock %}
+{% block content %}
+<h1>我的Playbook</h1>
+
+{% if completed_count < min_required %}
+<div class="card empty-state">
+    <h2>还需要更多录音</h2>
+    <p>需要至少 {{ min_required }} 条已分析的录音才能生成Playbook。</p>
+    <p>目前已完成: {{ completed_count }} / {{ min_required }}</p>
+    <a href="/recordings" class="btn mt-4">去上传录音</a>
+</div>
+{% elif not patterns %}
+<div class="card empty-state">
+    <p>Playbook正在生成中，请稍后刷新页面。</p>
+</div>
+{% else %}
+
+{% set categories = {
+    'opening': '开场白',
+    'discovery': '需求挖掘',
+    'rapport': '建立信任',
+    'rapport_building': '建立信任',
+    'presenting': '房源介绍',
+    'objection_handling': '异议处理',
+    'handling_objection': '异议处理',
+    'closing': '逼单成交',
+    'follow_up': '后续跟进'
+} %}
+
+{% for cat_key, cat_name in categories.items() %}
+    {% set cat_patterns = patterns | selectattr('category', 'equalto', cat_key) | list %}
+    {% if cat_patterns %}
+    <div class="card">
+        <h2>{{ cat_name }}</h2>
+        {% for pattern in cat_patterns %}
+        <div style="margin-bottom: 20px; padding: 16px; background: #f9f9f9; border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 16px;">{{ pattern.name }}</strong>
+                <span class="text-muted">出现 {{ pattern.frequency }} 次</span>
+            </div>
+            <p class="mt-2">{{ pattern.description }}</p>
+
+            {% if pattern.example_quotes %}
+            <div class="mt-2">
+                {% for quote in pattern.example_quotes[:3] %}
+                <p style="font-style: italic; color: #555; margin-top: 8px; padding-left: 12px; border-left: 3px solid #ddd;">"{{ quote }}"</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if pattern.boss_annotation %}
+            <div class="mt-2" style="background: #e8f5e9; padding: 10px; border-radius: 4px;">
+                <strong>老板批注:</strong> {{ pattern.boss_annotation }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+{% endif %}
+{% endblock %}

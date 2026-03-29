@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}销冠克隆器{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        nav {
+            background: #1a1a2e;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav a { color: white; text-decoration: none; margin-left: 20px; opacity: 0.8; }
+        nav a:hover { opacity: 1; }
+        nav .brand { font-weight: bold; font-size: 18px; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 16px;
+            border: 1px solid #e0e0e0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #1a1a2e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .btn:hover { background: #16213e; }
+        .btn-outline {
+            background: transparent;
+            color: #1a1a2e;
+            border: 1px solid #1a1a2e;
+        }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-uploaded { background: #e8f5e9; color: #2e7d32; }
+        .status-transcribing, .status-analyzing { background: #fff3e0; color: #ef6c00; }
+        .status-done { background: #e3f2fd; color: #1565c0; }
+        .status-failed { background: #ffebee; color: #c62828; }
+        h1 { margin-bottom: 16px; }
+        h2 { margin-bottom: 12px; color: #1a1a2e; }
+        .text-muted { color: #888; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        input[type="file"], input[type="password"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 14px;
+        }
+        .error { color: #c62828; margin-bottom: 12px; }
+        .empty-state { text-align: center; padding: 40px; color: #888; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% block nav %}
+    <nav>
+        <span class="brand">销冠克隆器</span>
+        <div>
+            <a href="/recordings">录音列表</a>
+            <a href="/playbook">我的Playbook</a>
+        </div>
+    </nav>
+    {% endblock %}
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
