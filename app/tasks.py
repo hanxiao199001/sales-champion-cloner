@@ -5,6 +5,10 @@ Handles the async processing pipeline:
   upload → transcribe → analyze → update playbook
 
 Also handles timeout detection for stuck recordings.
+
+TODO(队列化): 当前通过 asyncio.create_task 在 Web 进程内跑后台流水线，
+进程重启会丢任务、无法水平扩展、无重试语义。
+计划迁移到 arq（首选）或 celery，方案见 docs/UPGRADE_NOTES.md。
 """
 
 import logging
