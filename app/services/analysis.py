@@ -12,11 +12,16 @@ This is the core value of the product. Prompt engineering here IS the product.
 """
 
 import json
-from anthropic import Anthropic
+
+import anthropic
+from anthropic import AsyncAnthropic
 
 from app.config import ANTHROPIC_API_KEY
 
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+# anthropic SDK 1.x: 使用异步客户端，避免在 async 函数里阻塞事件循环
+client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
 
 ANALYSIS_PROMPT = """你是一个资深的房产销售培训专家。你正在分析一位销冠（顶级销售员）的通话录音转写稿。
 
@@ -108,8 +113,8 @@ async def analyze_call(transcript_segments: list[dict]) -> dict:
     transcript_text = _format_transcript(transcript_segments)
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        message = await client.messages.create(
+            model=CLAUDE_MODEL,
             max_tokens=4096,
             messages=[
                 {
@@ -118,10 +123,14 @@ async def analyze_call(transcript_segments: list[dict]) -> dict:
                 }
             ],
         )
-    except Exception as e:
-        raise AnalysisError(f"Claude API error: {e}")
+    except anthropic.APIConnectionError as e:
+        raise AnalysisError(f"Claude API connection error: {e}") from e
+    except anthropic.APIStatusError as e:
+        raise AnalysisError(f"Claude API error (HTTP {e.status_code}): {e.message}") from e
+    except anthropic.AnthropicError as e:
+        raise AnalysisError(f"Claude API error: {e}") from e
 
-    response_text = message.content[0].text
+    response_text = _extract_text(message)
 
     try:
         analysis = json.loads(response_text)
@@ -157,8 +166,8 @@ async def update_playbook_incremental(
         {"new_patterns": [...], "updated_patterns": [...]}
     """
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        message = await client.messages.create(
+            model=CLAUDE_MODEL,
             max_tokens=2048,
             messages=[
                 {
@@ -170,10 +179,16 @@ async def update_playbook_incremental(
                 }
             ],
         )
-    except Exception as e:
-        raise AnalysisError(f"Claude API error during playbook update: {e}")
+    except anthropic.APIConnectionError as e:
+        raise AnalysisError(f"Claude API connection error during playbook update: {e}") from e
+    except anthropic.APIStatusError as e:
+        raise AnalysisError(
+            f"Claude API error during playbook update (HTTP {e.status_code}): {e.message}"
+        ) from e
+    except anthropic.AnthropicError as e:
+        raise AnalysisError(f"Claude API error during playbook update: {e}") from e
 
-    response_text = message.content[0].text
+    response_text = _extract_text(message)
 
     try:
         result = json.loads(response_text)
@@ -185,9 +200,17 @@ async def update_playbook_incremental(
         try:
             result = json.loads(cleaned)
         except json.JSONDecodeError:
-            raise AnalysisError(f"Playbook update returned malformed JSON")
+            raise AnalysisError("Playbook update returned malformed JSON")
 
     return result
+
+
+def _extract_text(message) -> str:
+    """Concatenate all text blocks from an SDK 1.x Message response."""
+    parts = [block.text for block in message.content if getattr(block, "type", "") == "text"]
+    if not parts:
+        raise AnalysisError("Claude response contained no text content")
+    return "".join(parts)
 
 
 def _format_transcript(segments: list[dict]) -> str:
