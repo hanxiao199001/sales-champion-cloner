@@ -17,12 +17,28 @@ from app.models import RecordingStatus, PROCESSING_STATUSES
 
 _client: Optional[Client] = None
 
+AUDIO_BUCKET = "audio"
+# 签名 URL 有效期：需覆盖 ASR 拉取音频的整个处理窗口（默认 1 小时）
+SIGNED_URL_EXPIRES_SECONDS = 3600
+
 
 def get_client() -> Client:
     global _client
     if _client is None:
         _client = create_client(SUPABASE_URL, SUPABASE_KEY)
     return _client
+
+
+def get_audio_url(storage_path: str, expires_in: int = SIGNED_URL_EXPIRES_SECONDS) -> str:
+    """
+    为私有 audio bucket 生成限时签名 URL，供 ASR 服务下载音频。
+
+    bucket 无论公开与否，签名 URL 均可用；因此可以先切换代码，
+    再在 Supabase 控制台把 bucket 改为私有（见 docs/UPGRADE_NOTES.md）。
+    """
+    client = get_client()
+    result = client.storage.from_(AUDIO_BUCKET).create_signed_url(storage_path, expires_in)
+    return result["signedURL"]
 
 
 def create_recording(filename: str, storage_path: str) -> dict:
