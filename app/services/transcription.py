@@ -8,13 +8,9 @@ Uses Alibaba Cloud Speech API (or compatible hosted ASR) for:
 Quality gate: if ASR confidence < threshold, reject the recording.
 """
 
-import json
 import httpx
-from typing import Optional
 
 from app.config import (
-    ALIBABA_ACCESS_KEY_ID,
-    ALIBABA_ACCESS_KEY_SECRET,
     ASR_CONFIDENCE_THRESHOLD,
 )
 
