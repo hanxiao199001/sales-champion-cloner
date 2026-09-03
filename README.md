@@ -69,7 +69,7 @@ CREATE TABLE playbook_patterns (
 );
 ```
 
-Also create a Storage bucket named `audio` with public access.
+Also create a **private** Storage bucket named `audio`（不要开启 public access）。代码通过限时签名 URL（默认 1 小时）把音频交给 ASR 服务，无需公开读。存量公开 bucket 的收紧步骤见 `docs/UPGRADE_NOTES.md`。
 
 ## Architecture
 

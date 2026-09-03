@@ -12,7 +12,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Depends
+from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -116,12 +116,12 @@ async def upload_recording(request: Request, file: UploadFile = File(...)):
 
     try:
         client = db.get_client()
-        client.storage.from_("audio").upload(storage_path, content)
+        client.storage.from_(db.AUDIO_BUCKET).upload(storage_path, content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"文件上传失败: {e}")
 
-    # Get public URL for ASR service
-    audio_url = client.storage.from_("audio").get_public_url(storage_path)
+    # 私有 bucket：为 ASR 服务生成限时签名 URL（不再使用 public URL）
+    audio_url = db.get_audio_url(storage_path)
 
     # Create recording record
     recording = db.create_recording(
@@ -130,6 +130,8 @@ async def upload_recording(request: Request, file: UploadFile = File(...)):
     )
 
     # Start async processing
+    # TODO(队列化): asyncio.create_task 在进程重启/多 worker 部署时会丢任务，
+    # 后续迁移到 arq/celery 持久化任务队列，见 docs/UPGRADE_NOTES.md
     asyncio.create_task(process_recording(recording["id"], audio_url))
 
     return RedirectResponse(
@@ -160,6 +162,7 @@ async def upload_transcript(
 
     # Save transcript and go straight to analysis (skip ASR)
     db.update_recording(recording["id"], transcript=segments, asr_confidence=100.0)
+    # TODO(队列化): 同上，迁移到 arq/celery，见 docs/UPGRADE_NOTES.md
     asyncio.create_task(process_transcript(recording["id"], segments))
 
     return RedirectResponse(
@@ -257,9 +260,9 @@ async def retry_recording(request: Request, recording_id: str):
         error_message=None,
     )
 
-    # Get audio URL and restart processing
-    client = db.get_client()
-    audio_url = client.storage.from_("audio").get_public_url(recording["storage_path"])
+    # Get audio URL and restart processing（私有 bucket 签名 URL）
+    audio_url = db.get_audio_url(recording["storage_path"])
+    # TODO(队列化): 同上，迁移到 arq/celery，见 docs/UPGRADE_NOTES.md
     asyncio.create_task(process_recording(recording_id, audio_url))
 
     return RedirectResponse(
